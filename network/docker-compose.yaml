@@ -1,0 +1,167 @@
+version: '2.1'
+
+volumes:
+  orderer.trace.com:
+  peer0.org1.com:
+  peer0.org2.com:
+  peer0.org3.com:
+  peer0.org4.com:
+  peer0.org5.com:
+
+networks:
+  fabric_network:
+    name: fabric_network
+
+services:
+  # ca认证服务 
+  # CA_PRIVATE_KEY 环境变量在节点信息生成之后在start.sh脚本中抛出
+  ca.trace.com:
+    image: hyperledger/fabric-ca:amd64-1.4.9
+    environment:
+      - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
+      - FABRIC_CA_SERVER_CA_NAME=ca.trace.com
+      - FABRIC_CA_SERVER_CA_CERTFILE=/etc/hyperledger/fabric-ca-server-config/ca.org1.com-cert.pem
+      - FABRIC_CA_SERVER_CA_KEYFILE=/etc/hyperledger/fabric-ca-server-config/${CA_PRIVATE_KEY}
+    ports:
+      - 7054:7054
+    command: sh -c 'fabric-ca-server start -b admin:adminpw'
+    volumes:
+      - ./crypto-config/peerOrganizations/org1.com/ca/:/etc/hyperledger/fabric-ca-server-config
+    container_name: ca.trace.com
+    networks:
+      - fabric_network
+
+
+  # 排序服务节点
+  orderer.trace.com:
+    container_name: orderer.trace.com
+    image: hyperledger/fabric-orderer:amd64-1.4.12
+    environment:
+      - GODEBUG=netdns=go
+      - ORDERER_GENERAL_LISTENADDRESS=0.0.0.0
+      - ORDERER_GENERAL_GENESISMETHOD=file
+      - ORDERER_GENERAL_GENESISFILE=/etc/hyperledger/config/genesis.block # 注入创世区块
+      - ORDERER_GENERAL_LOCALMSPID=TraceMSP
+      - ORDERER_GENERAL_LOCALMSPDIR=/etc/hyperledger/orderer/msp # 证书相关
+    command: orderer
+    ports:
+      - "7050:7050"
+    volumes: # 挂载由cryptogen和configtxgen生成的证书文件以及创世区块
+      - ./config/genesis.block:/etc/hyperledger/config/genesis.block
+      - ./crypto-config/ordererOrganizations/trace.com/orderers/orderer.trace.com/:/etc/hyperledger/orderer
+      - orderer.trace.com:/var/hyperledger/production/orderer
+    networks:
+      - fabric_network
+
+  #  Org1 组织 peer0 节点
+  peer0.org1.com:
+    extends:
+      file: docker-compose-base.yaml
+      service: peer-base
+    container_name: peer0.org1.com
+    environment:
+      - CORE_PEER_ID=peer0.org1.com
+      - CORE_PEER_LOCALMSPID=Org1MSP
+      - CORE_PEER_ADDRESS=peer0.org1.com:7051
+    ports:
+      - "7051:7051" # grpc服务端口
+      - "7053:7053" # eventhub端口
+    volumes:
+      - ./crypto-config/peerOrganizations/org1.com/peers/peer0.org1.com:/etc/hyperledger/peer
+    depends_on:
+      - orderer.trace.com
+
+  #   Org2 组织 peer0 节点
+  peer0.org2.com:
+    extends:
+      file: docker-compose-base.yaml
+      service: peer-base
+    container_name: peer0.org2.com
+    environment:
+      - CORE_PEER_ID=peer0.org2.com
+      - CORE_PEER_LOCALMSPID=Org2MSP
+      - CORE_PEER_ADDRESS=peer0.org2.com:7051
+    ports:
+      - "17051:7051" # grpc服务端口
+      - "17053:7053" # eventhub端口
+    volumes:
+      - ./crypto-config/peerOrganizations/org2.com/peers/peer0.org2.com:/etc/hyperledger/peer
+    depends_on:
+      - orderer.trace.com
+
+  #  Org3 组织 peer0 节点
+  peer0.org3.com:
+    extends:
+      file: docker-compose-base.yaml
+      service: peer-base
+    container_name: peer0.org3.com
+    environment:
+      - CORE_PEER_ID=peer0.org3.com
+      - CORE_PEER_LOCALMSPID=Org3MSP
+      - CORE_PEER_ADDRESS=peer0.org3.com:7051
+    ports:
+      - "27051:7051" # grpc服务端口
+      - "27053:7053" # eventhub端口
+    volumes:
+      - ./crypto-config/peerOrganizations/org3.com/peers/peer0.org3.com:/etc/hyperledger/peer
+    depends_on:
+      - orderer.trace.com
+
+  #  Org4 组织 peer0 节点
+  peer0.org4.com:
+    extends:
+      file: docker-compose-base.yaml
+      service: peer-base
+    container_name: peer0.org4.com
+    environment:
+      - CORE_PEER_ID=peer0.org4.com
+      - CORE_PEER_LOCALMSPID=Org4MSP
+      - CORE_PEER_ADDRESS=peer0.org4.com:7051
+    ports:
+      - "37051:7051" # grpc服务端口
+      - "37053:7053" # eventhub端口
+    volumes:
+      - ./crypto-config/peerOrganizations/org4.com/peers/peer0.org4.com:/etc/hyperledger/peer
+    depends_on:
+      - orderer.trace.com
+    
+  #  Org5 组织 peer0 节点
+  peer0.org5.com:
+    extends:
+      file: docker-compose-base.yaml
+      service: peer-base
+    container_name: peer0.org5.com
+    environment:
+      - CORE_PEER_ID=peer0.org5.com
+      - CORE_PEER_LOCALMSPID=Org5MSP
+      - CORE_PEER_ADDRESS=peer0.org5.com:7051
+    ports:
+      - "47051:7051" # grpc服务端口
+      - "47053:7053" # eventhub端口
+    volumes:
+      - ./crypto-config/peerOrganizations/org5.com/peers/peer0.org5.com:/etc/hyperledger/peer
+    depends_on:
+      - orderer.trace.com
+
+  # 客户端节点
+  cli:
+    container_name: cli
+    image: hyperledger/fabric-tools:amd64-1.4.12
+    tty: true
+    environment:
+      - CORE_PEER_ID=cli
+    command: /bin/bash
+    volumes:
+      - ./config:/etc/hyperledger/config
+      - ./crypto-config/peerOrganizations/:/etc/hyperledger/peer/
+      - ./../chaincode:/opt/gopath/src/chaincode # 链码路径注入
+    networks:
+      - fabric_network
+    depends_on:
+      - ca.trace.com
+      - orderer.trace.com
+      - peer0.org1.com
+      - peer0.org2.com
+      - peer0.org3.com
+      - peer0.org4.com
+      - peer0.org5.com

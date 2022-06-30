@@ -1,0 +1,5 @@
+config/**
+!config/.gitkeep
+
+crypto-config/**
+!crypto-config/.gitkeep
